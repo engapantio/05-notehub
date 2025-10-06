@@ -15,6 +15,7 @@ import Modal from '../Modal/Modal';
 import NoteForm from '../NoteForm/NoteForm';
 import SearchBox from '../SearchBox/SearchBox';
 import Loader from '../Loader/Loader';
+import Error from '../Error/Error';
 
 export default function App() {
   const [search, setSearch] = useState<string>('');
@@ -22,7 +23,7 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const queryClient = useQueryClient();
-  const { data, isSuccess, isFetching } = useQuery({
+  const { data, isSuccess, isError, isLoading } = useQuery({
     queryKey: ['notes', search, page],
     queryFn: () => fetchNotes(search, page),
     placeholderData: keepPreviousData,
@@ -79,13 +80,19 @@ export default function App() {
           Create note +
         </button>
       </header>
-      {isFetching && <Loader />}
+      {isLoading || (deletedNote.isPending && <Loader />)}
+      {[isError, newNote.isError, deletedNote.isError].some(
+        err => err === true
+      ) && <Error />}
       {data?.notes && (
         <NoteList notes={data?.notes} onDelete={handleToBeDeletedNote} />
       )}
+      {newNote.isSuccess && <div>Note added!</div>}
+      {deletedNote.isSuccess && <div>Note deleted!</div>}
       {isModalOpen && (
         <Modal onClose={closeModal}>
           <NoteForm onCancel={closeModal} onSubmit={handleNewNote} />
+          {newNote.isPending && <Loader />}
         </Modal>
       )}
     </div>
