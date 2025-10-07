@@ -15,12 +15,14 @@ interface CreateNoteProps {
 const noteHubToken = import.meta.env.VITE_NOTEHUB_TOKEN;
 axios.defaults.baseURL = 'https://notehub-public.goit.study/api';
 axios.defaults.headers.common['Authorization'] = noteHubToken;
+
 export const fetchNotes = async (
   search: string,
-  page: number
+  page: number,
+  perPage: number
 ): Promise<FetchNotesResponse> => {
   const response = await axios.get<FetchNotesResponse>(
-    `/notes?search=${search}&page=${page}`
+    `/notes?search=${search}&page=${page}&perPage=${perPage}`
   );
 
   return response.data;

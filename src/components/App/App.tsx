@@ -1,7 +1,7 @@
 import css from './App.module.css';
 import type { Note } from '../../types/note';
 import { fetchNotes, createNote, deleteNote } from '../../services/noteService';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import {
   useQuery,
@@ -9,6 +9,7 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query';
+import { Toaster, toast } from 'react-hot-toast';
 import NoteList from '../NoteList/NoteList';
 import Pagination from '../Pagination/Pagination';
 import Modal from '../Modal/Modal';
@@ -20,20 +21,29 @@ import Error from '../Error/Error';
 export default function App() {
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(1);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+
+  const perPage = 12;
 
   const queryClient = useQueryClient();
   const { data, isSuccess, isError, isLoading } = useQuery({
     queryKey: ['notes', search, page],
-    queryFn: () => fetchNotes(search, page),
+    queryFn: () => fetchNotes(search, page, perPage),
     placeholderData: keepPreviousData,
   });
 
   const totalPages = data?.totalPages ?? 0;
+  const totalNotes = data?.notes?.length ?? 0;
+
+  useEffect(() => {
+    if (isSuccess && totalNotes === 0) {
+      toast.error('No notes found for your request.');
+    }
+  }, [isSuccess, totalNotes]);
 
   const updateSearchQuery = useDebouncedCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value),
-    300
+    500
   );
 
   const openModal = () => {
@@ -46,7 +56,10 @@ export default function App() {
 
   const deletedNote = useMutation({
     mutationFn: (id: Note['id']) => deleteNote(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notes'] }),
+    onSuccess: () => {
+      toast('Note deleted!', { duration: 1500, position: 'bottom-left' });
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
   });
 
   const handleToBeDeletedNote = (id: Note['id']) => {
@@ -57,6 +70,7 @@ export default function App() {
     mutationFn: (note: Note) => createNote(note),
     onSuccess: () => {
       closeModal();
+      toast.success('Note added!', { position: 'bottom-left' });
       queryClient.invalidateQueries({ queryKey: ['notes'] });
     },
   });
@@ -71,8 +85,9 @@ export default function App() {
 
   return (
     <div className={css.app}>
+      <Toaster />
       <header className={css.toolbar}>
-        <SearchBox onChange={updateSearchQuery} />
+        <SearchBox defValue={search} onChange={updateSearchQuery} />
         {isSuccess && totalPages > 1 && (
           <Pagination page={page} totalPages={totalPages} setPage={setPage} />
         )}
@@ -80,15 +95,13 @@ export default function App() {
           Create note +
         </button>
       </header>
-      {isLoading || (deletedNote.isPending && <Loader />)}
+      {(isLoading || deletedNote.isPending) && <Loader />}
       {[isError, newNote.isError, deletedNote.isError].some(
         err => err === true
       ) && <Error />}
-      {data?.notes && (
+      {data?.notes && totalNotes > 0 && (
         <NoteList notes={data?.notes} onDelete={handleToBeDeletedNote} />
       )}
-      {newNote.isSuccess && <div>Note added!</div>}
-      {deletedNote.isSuccess && <div>Note deleted!</div>}
       {isModalOpen && (
         <Modal onClose={closeModal}>
           <NoteForm onCancel={closeModal} onSubmit={handleNewNote} />
