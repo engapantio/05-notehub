@@ -26,9 +26,9 @@ export default function NoteList({ notes }: NoteListProps) {
 
   return (
     <ul className={css.list}>
+      {toBeDeletedNote.isPending && <Loader />}
       {notes.map((note: Note) => (
         <li key={note.id} className={css.listItem}>
-          {toBeDeletedNote.isPending && <Loader />}
           <h2 className={css.title}>{note.title}</h2>
           <p className={css.content}>{note.content}</p>
           <div className={css.footer}>
